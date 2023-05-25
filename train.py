@@ -2,9 +2,11 @@ import os
 import sys
 import random
 
+from stable_baselines3.common.logger import TensorBoardOutputFormat
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import SubprocVecEnv
-from stable_baselines3.common.callbacks import CheckpointCallback
+from stable_baselines3.common.callbacks import CheckpointCallback, BaseCallback
+
 
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
@@ -13,6 +15,32 @@ from sudoku_env import SudokuEnv
 
 NUM_ENV = 1
 LOG_DIR = "logs"
+
+
+class LogCallback(BaseCallback):
+    def __init__(self, verbose=0):
+        super(LogCallback, self).__init__(verbose)
+
+    def _on_training_start(self):
+        output_formats = self.logger.output_formats
+        # Save reference to tensorboard formatter object
+        # note: the failure case (not formatter found) is not handled here, should be done with try/except.
+        self.tb_formatter = next(formatter for formatter in output_formats if isinstance(formatter, TensorBoardOutputFormat))
+    
+    def _on_rollout_end(self) -> bool:
+        # env = self.training_env
+
+        # self.tb_formatter.writer.add_scalar("episode_reward", env.reward)
+        # self.tb_formatter.writer.add_scalar("episode_length", env.steps)
+
+        value = random.randint(1, 100)
+        self.logger.record('random_value', value)
+ 
+        return True
+    
+    def _on_step(self) -> bool:
+        return super()._on_step()
+
 
 def linear_schedule(initial_value, final_value=0.0):
 
@@ -31,7 +59,7 @@ def make_env(seed=0):
         env = SudokuEnv(seed=seed)
         env = ActionMasker(env, SudokuEnv.get_action_mask)
         env = Monitor(env)
-        env.seed(seed)
+        # env.seed(seed)
         return env
     return _init
 
@@ -40,13 +68,14 @@ def main():
     while len(seed_set) < NUM_ENV:
         seed_set.add(random.randint(0, 1e9))
 
-    env = SubprocVecEnv([make_env(seed=s) for s in seed_set])
+    # env = SubprocVecEnv([make_env(seed=s) for s in seed_set])
+    env = make_env(random.randint(0, 1e9))()
 
     lr_schedule = linear_schedule(2.5e-4, 2.5e-6)
     clip_range_schedule = linear_schedule(0.150, 0.025)
 
     model = MaskablePPO(
-        "CnnPolicy",
+        "MlpPolicy",
         env,
         device="cpu",
         verbose=1,
@@ -63,6 +92,8 @@ def main():
     save_dir = "model"
     os.makedirs(save_dir, exist_ok=True)
 
+    log_callback = LogCallback()
+
     checkpoint_interval = 15625 # checkpoint_interval * num_envs = total_steps_per_checkpoint
     checkpoint_callback = CheckpointCallback(save_freq=checkpoint_interval, save_path=save_dir, name_prefix="ppo_sudoku")
 
@@ -74,7 +105,7 @@ def main():
 
         model.learn(
             total_timesteps=int(100000000),
-            callback=[checkpoint_callback]
+            callback=[checkpoint_callback, log_callback]
         )
         env.close()
 

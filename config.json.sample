@@ -1,0 +1,7 @@
+{
+    "model_path": "model/ppo_sudoku_final.zip",
+    "num_episode": 10,
+    "render": true,
+    "frame_delay": 0.01,
+    "round_delay": 5
+}

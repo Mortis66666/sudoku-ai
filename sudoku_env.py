@@ -1,4 +1,4 @@
-import gymnasium as gym
+import gym
 import numpy as np
 from sudoku_game import SudokuGame
 
@@ -9,38 +9,48 @@ class SudokuEnv(gym.Env):
         self.game = SudokuGame(seed)
         self.game.reset()
 
-        self.action_space = gym.spaces.Tuple((
-            gym.spaces.Discrete(9),  # Row index (0-8)
-            gym.spaces.Discrete(9),  # Column index (0-8)
-            gym.spaces.Discrete(9)   # Cell value (1-9)
-        ))
+        self.action_space = gym.spaces.discrete.Discrete(9 * 9 * 9)
         self.observation_space = gym.spaces.Box(low=0, high=9, shape=(9, 9), dtype=int)
 
         self.done = False
+        self.steps = 0
+        self.reward = 0
 
     def seed(self, seed=0):
         self.game.seed(seed)
 
     def step(self, action):
-        self.done, reward = self.step(action)
-
+        self.done, reward, self.steps = self.game.step(self.get_action_details(action))
+        self.reward += reward
         return self.game.board, reward, self.done, {}
 
     def render(self):
         self.game.render()
 
     def reset(self):
-        self.game.reset()
+        self.steps = 0
+        self.reward = 0
+        return self.game.reset()
 
     def get_action_mask(self):
         action_mask = np.zeros(self.action_space.n, dtype=bool)
-    
-        for row in range(9):
-            for col in range(9):
-                for value in range(1, 10):
-                    action = (row, col, value)
-                    if self.game.is_valid(*action):
-                        action_index = self.action_space.index(action)
-                        action_mask[action_index] = True
-        
+
+        for action_index in range(self.action_space.n):
+            row, col, value = self.get_action_details(action_index)
+            action = (row, col, value)
+            if self.game.is_valid(*action):
+                action_mask[action_index] = True
+
         return action_mask
+    
+    def get_action_details(self, action_index):
+        row = action_index // (9 * 9)
+        col = (action_index // 9) % 9
+        value = action_index % 9
+        return row, col, value
+
+if __name__ == "__main__":
+    env = SudokuEnv()
+    env.reset()
+
+    print(env.step((0, 0, 5)))
