@@ -62,7 +62,7 @@ for episode in range(NUM_EPISODE):
             env.render()
             time.sleep(FRAME_DELAY)
 
-    print(f"Episode {episode + 1}: Reward Sum: {episode_reward:.4f}")
+    print(f"Episode {episode + 1}: Reward Sum: {episode_reward:.4f}, Steps: {env.steps}")
     total_reward += episode_reward
 
     if RENDER:

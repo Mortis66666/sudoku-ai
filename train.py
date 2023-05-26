@@ -36,10 +36,13 @@ class LogCallback(BaseCallback):
 
         self.logger.record('reward', self.env.reward)
         self.logger.record('steps', self.env.steps)
+
+        # print(self.env.game.board)
  
         return True
     
     def _on_step(self) -> bool:
+        self.env.render()
         return super()._on_step()
 
 
@@ -70,7 +73,8 @@ def main():
         seed_set.add(random.randint(0, 1e9))
 
     # env = SubprocVecEnv([make_env(seed=s) for s in seed_set])
-    env = make_env(random.randint(0, 1e9))()
+    # env = make_env(random.randint(0, 1e9))()
+    env = make_env(seed=69)()
 
     lr_schedule = linear_schedule(2.5e-4, 2.5e-6)
     clip_range_schedule = linear_schedule(0.150, 0.025)

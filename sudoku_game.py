@@ -25,7 +25,7 @@ class SudokuGame:
 
         self.font = pygame.font.SysFont("Arial", 30)
 
-        self.player_place = []
+        self.player_place = set()
         self.steps = 0
 
         self.selected_x = 0
@@ -52,6 +52,18 @@ class SudokuGame:
                         (
                             self.selected_x * self.cell_size,
                             self.selected_y * self.cell_size,
+                            self.cell_size,
+                            self.cell_size
+                        )
+                    )
+
+                if self.board[y, x] == 0 or (x, y) in self.player_place:
+                    pygame.draw.rect(
+                        self.screen,
+                        (255, 255, 204),
+                        (
+                            x * self.cell_size,
+                            y * self.cell_size,
                             self.cell_size,
                             self.cell_size
                         )
@@ -138,8 +150,6 @@ class SudokuGame:
         self.player_place.clear()
         self.steps = 0
 
-        return self.board
-
     def step(self, action):
         x, y, n = action
         self.steps += 1
@@ -151,33 +161,46 @@ class SudokuGame:
             done = True
 
         elif self.is_valid(x, y, n):
-            reward += .1
+
+            # Encourage ai to explore
+            if self.board[y, x] == 0:
+                reward += 1
+            else:
+                reward -= 1
+
 
             self.put(x, y, n)
 
-            x, _ = self.find_empty()
+            # reward += (
+            #     self.board[y].sum() + \
+            #     self.board[:, x].sum() + \
+            #     self.board[y // 3 * 3 : y // 3 * 3 + 3, x // 3 * 3 : x // 3 * 3 + 3].sum()
+            # ) * .1
 
-            if x is None:
+            _x, _ = self.find_empty()
+
+            if _x is None:
                 reward += 3
                 done = True
 
-            if self.board[y].sum() == 45:
+            elif self.check_unique(self.board[y].sum()):
                 reward += 1
             
-            elif self.board[:, x].sum() == 45:
+            elif self.check_unique(self.board[:, x].sum()):
                 reward += 1
             
-            elif self.board[y // 3 * 3 : y // 3 * 3 + 3, x // 3 * 3 : x // 3 * 3 + 3].sum() == 45:
+            elif self.check_unique(self.board[y // 3 * 3 : y // 3 * 3 + 3, x // 3 * 3 : x // 3 * 3 + 3].sum()):
                 reward += 1
         
         else:
-            reward -= .5
+            reward -= 2
+            self.put(x, y, n)
         
         return done, reward, self.steps
 
     def put(self, x, y, n):
         self.board[y, x] = n
-        self.player_place.append((x, y))
+        self.player_place.add((x, y))
 
     def generate_board(self):
         base  = 3
@@ -209,6 +232,15 @@ class SudokuGame:
             return result[0][0], result[1][0]
         
         return None, None
+
+    def check_unique(self, arr):
+        return np.all(np.isin(np.arange(1, 10), arr))
+
+    def calculate_similarity(self, arr):
+        target = np.arange(1, 10)  # Array with numbers 1 to 9
+        intersection = np.intersect1d(arr, target)
+        similarity = len(intersection) / len(target)
+        return similarity
     
     def is_valid(self, x, y, n):
         # if self.board[y, x] != 0 and (x, y) not in self.player_place:
