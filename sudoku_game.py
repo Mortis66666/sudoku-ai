@@ -24,9 +24,6 @@ class SudokuGame:
 
         self.font = pygame.font.SysFont("Arial", 30)
 
-        self.last_update = 0
-        self.frame_delay = 0.05
-
         self.reds = []
         self.steps = 0
 
@@ -39,12 +36,6 @@ class SudokuGame:
 
     def render(self):
         # print('render')
-        # now = time.time()
-
-        # if now - self.last_update < self.frame_delay:
-        #     return
-        
-        # self.last_update = now
 
         self.screen.fill((255, 255, 255))
 
@@ -101,30 +92,37 @@ class SudokuGame:
         x, y, n = action
         self.steps += 1
 
-        if self.steps > MAX_STEPS:
-            return True, 0, self.steps
+        done = False
+        reward = 0
 
-        if self.is_valid(x, y, n):
+        if self.steps > MAX_STEPS:
+            done = True
+
+        elif self.is_valid(x, y, n):
+            reward += .1
+
             self.put(x, y, n)
 
             x, _ = self.find_empty()
 
             if x is None:
-                return True, 3, self.steps
+                reward += 3
+                done = True
 
             if self.board[y].sum() == 45:
-                return False, 1, self.steps
+                reward += 1
             
-            if self.board[:, x].sum() == 45:
-                return False, 1, self.steps
+            elif self.board[:, x].sum() == 45:
+                reward += 1
             
-            if self.board[y // 3 * 3 : y // 3 * 3 + 3, x // 3 * 3 : x // 3 * 3 + 3].sum() == 45:
-                return False, 1, self.steps
-
-            return False, 0, self.steps
+            elif self.board[y // 3 * 3 : y // 3 * 3 + 3, x // 3 * 3 : x // 3 * 3 + 3].sum() == 45:
+                reward += 1
         
-        return True, -100, self.steps
-    
+        else:
+            reward -= .5
+        
+        return done, reward, self.steps
+
     def put(self, x, y, n):
         self.board[y, x] = n
         self.reds.append((x, y))
@@ -161,6 +159,9 @@ class SudokuGame:
         return None, None
     
     def is_valid(self, x, y, n):
+        if self.board[y, x] != 0 and (x, y) not in self.reds or self.board[y, x] == n:
+            return False
+
         # Check if row fits
         if n in self.board[y]:
             return False

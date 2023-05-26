@@ -1,5 +1,6 @@
 import gym
 import numpy as np
+import time
 from sudoku_game import SudokuGame
 
 class SudokuEnv(gym.Env):
@@ -16,6 +17,10 @@ class SudokuEnv(gym.Env):
         self.steps = 0
         self.reward = 0
 
+        self.last_render = 0
+        self.frame_delay = 0.05
+
+
     def seed(self, seed=0):
         self.game.seed(seed)
 
@@ -25,6 +30,13 @@ class SudokuEnv(gym.Env):
         return self.game.board, reward, self.done, {}
 
     def render(self):
+        now = time.time()
+
+        if now - self.last_render < self.frame_delay:
+            return
+        
+        self.last_render = now
+
         self.game.render()
 
     def reset(self):

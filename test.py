@@ -26,9 +26,6 @@ env = SudokuEnv(seed=seed)
 model = MaskablePPO.load(MODEL_PATH)
 
 total_reward = 0
-total_score = 0
-min_score = 1e9
-max_score = 0
 
 for episode in range(NUM_EPISODE):
     obs = env.reset()
@@ -65,14 +62,12 @@ for episode in range(NUM_EPISODE):
             env.render()
             time.sleep(FRAME_DELAY)
 
-
-    
     print(f"Episode {episode + 1}: Reward Sum: {episode_reward:.4f}")
     total_reward += episode_reward
-    total_score += env.game.score
+
     if RENDER:
         time.sleep(ROUND_DELAY)
 
 env.close()
 print(f"=================== Summary ==================")
-print(f"Average Score: {total_score / NUM_EPISODE}, Min Score: {min_score}, Max Score: {max_score}, Average reward: {total_reward / NUM_EPISODE}")
+print(f"Average reward: {total_reward / NUM_EPISODE}")
