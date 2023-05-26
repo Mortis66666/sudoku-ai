@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import pygame
 import random
@@ -24,8 +25,11 @@ class SudokuGame:
 
         self.font = pygame.font.SysFont("Arial", 30)
 
-        self.reds = []
+        self.player_place = []
         self.steps = 0
+
+        self.selected_x = 0
+        self.selected_y = 0
 
         # self.screen = transient(self.screen)
         # self.font = transient(self.font)
@@ -41,8 +45,32 @@ class SudokuGame:
 
         for y, row in enumerate(self.board):
             for x, cell in enumerate(row):
+                if x == self.selected_x and y == self.selected_y:
+                    pygame.draw.rect(
+                        self.screen,
+                        (220, 220, 220),
+                        (
+                            self.selected_x * self.cell_size,
+                            self.selected_y * self.cell_size,
+                            self.cell_size,
+                            self.cell_size
+                        )
+                    )
+
                 if cell:
-                    text = self.font.render(str(cell), True, (255, 0, 0) if (x, y) in self.reds else (0, 0, 0))
+                    color = (0, 0, 0)
+
+                    self.board[y, x] = 0
+
+                    if (x, y) in self.player_place:
+                        if self.is_valid(x, y, cell):
+                            color = (0, 255, 0)
+                        else:
+                            color = (255, 0, 0)
+
+                    self.board[y, x] = cell
+
+                    text = self.font.render(str(cell), True, color)
                     self.screen.blit(
                         text,
                         (
@@ -76,6 +104,30 @@ class SudokuGame:
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    pygame.quit()
+                    sys.exit()
+                elif event.key == pygame.K_UP:
+                    self.selected_y = max(0, self.selected_y - 1)
+                elif event.key == pygame.K_DOWN:
+                    self.selected_y = min(8, self.selected_y + 1)
+                elif event.key == pygame.K_LEFT:
+                    self.selected_x = max(0, self.selected_x - 1)
+                elif event.key == pygame.K_RIGHT:
+                    self.selected_x = min(8, self.selected_x + 1)
+                elif event.key >= pygame.K_1 and event.key <= pygame.K_9:
+                    n = event.key - pygame.K_1 + 1
+                    self.put(self.selected_x, self.selected_y, n)
+                elif event.key in (pygame.K_BACKSPACE, pygame.K_0):
+                    self.board[self.selected_y, self.selected_x] = 0
+                    self.player_place.remove((self.selected_x, self.selected_y))
+
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                x, y = pygame.mouse.get_pos()
+
+                self.selected_x = math.floor(x / self.cell_size)
+                self.selected_y = math.floor(y / self.cell_size)
 
     def reset(self):
         self.board = np.zeros((9, 9), dtype=int)
@@ -83,7 +135,7 @@ class SudokuGame:
         # np.random.shuffle(self.board[0])
         self.generate_board()
         self.clean()
-        self.reds.clear()
+        self.player_place.clear()
         self.steps = 0
 
         return self.board
@@ -125,7 +177,7 @@ class SudokuGame:
 
     def put(self, x, y, n):
         self.board[y, x] = n
-        self.reds.append((x, y))
+        self.player_place.append((x, y))
 
     def generate_board(self):
         base  = 3
@@ -159,8 +211,8 @@ class SudokuGame:
         return None, None
     
     def is_valid(self, x, y, n):
-        if self.board[y, x] != 0 and (x, y) not in self.reds or self.board[y, x] == n:
-            return False
+        # if self.board[y, x] != 0 and (x, y) not in self.player_place:
+        #     return False
 
         # Check if row fits
         if n in self.board[y]:
