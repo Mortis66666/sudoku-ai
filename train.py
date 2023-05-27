@@ -80,7 +80,7 @@ def main():
     clip_range_schedule = linear_schedule(0.150, 0.025)
 
     model = MaskablePPO(
-        "MlpPolicy",
+        "CnnPolicy",
         env,
         device="cpu",
         verbose=1,

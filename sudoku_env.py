@@ -4,10 +4,10 @@ import time
 from sudoku_game import SudokuGame
 
 class SudokuEnv(gym.Env):
-    def __init__(self, seed=0):
+    def __init__(self, seed=0, log_data=False):
         super().__init__()
 
-        self.game = SudokuGame(seed)
+        self.game = SudokuGame(seed, log_data)
         self.game.reset()
 
         self.action_space = gym.spaces.discrete.Discrete(9 * 9 * 9)
@@ -17,10 +17,10 @@ class SudokuEnv(gym.Env):
         #     dtype=int
         # )
         self.observation_space = gym.spaces.Box(
-            low=-1,
-            high=9,
-            shape=(9, 9, 2),
-            dtype=int
+            low=0,
+            high=255,
+            shape=(81, 81, 3),
+            dtype=np.uint8
         )
 
         # print("obs space:")
@@ -76,7 +76,7 @@ class SudokuEnv(gym.Env):
         return x, y, value
     
     def generate_observation(self):
-        obs = np.zeros((9, 9, 2))
+        obs = np.zeros((9, 9, 3), dtype=np.uint8)
 
         for y, cell in enumerate(self.game.board):
             for x, value in enumerate(cell):
@@ -87,13 +87,14 @@ class SudokuEnv(gym.Env):
                     if self.game.is_valid(x, y, value):
                         obs[y, x, 1] = 1
                     else:
-                        obs[y, x, 1] = -1
+                        obs[y, x, 1] = 2
 
                     self.game.board[y, x] = value
 
 
                 obs[y, x, 0] = value
 
+        obs = np.repeat(np.repeat(obs, 9, axis=0), 9, axis=1)
         return obs
 
 if __name__ == "__main__":

@@ -1,3 +1,4 @@
+import json
 import math
 import numpy as np
 import pygame
@@ -10,9 +11,11 @@ import time
 MAX_STEPS = 1000
 
 class SudokuGame:
-    def __init__(self, seed=None):
+    def __init__(self, seed=None, log_data=False):
         if seed:
             self.seed(seed)
+
+        self.log_data = log_data
 
         pygame.init()
         pygame.font.init()
@@ -30,6 +33,19 @@ class SudokuGame:
 
         self.selected_x = 0
         self.selected_y = 0
+
+        self.row_progress = 0
+        self.col_progress = 0
+        self.box_progress = 0
+        self.avg_progress = 0
+
+
+        self.data = {
+            "row_progress": [],
+            "col_progress": [],
+            "box_progress": [],
+            "avg_progress": []
+        }
 
         # self.screen = transient(self.screen)
         # self.font = transient(self.font)
@@ -148,6 +164,12 @@ class SudokuGame:
         self.generate_board()
         self.clean()
         self.player_place.clear()
+        self.log_data = self.data = {
+            "row_progress": [],
+            "col_progress": [],
+            "box_progress": [],
+            "avg_progress": []
+        }
         self.steps = 0
 
     def step(self, action):
@@ -157,45 +179,48 @@ class SudokuGame:
         done = False
         reward = 0
 
+        # Finish game if reach max steps
         if self.steps > MAX_STEPS:
             done = True
 
-        elif self.is_valid(x, y, n):
-
-            # Encourage ai to explore
-            if self.board[y, x] == 0:
-                reward += 1
-            else:
-                reward -= 1
-
-
-            self.put(x, y, n)
-
-            # reward += (
-            #     self.board[y].sum() + \
-            #     self.board[:, x].sum() + \
-            #     self.board[y // 3 * 3 : y // 3 * 3 + 3, x // 3 * 3 : x // 3 * 3 + 3].sum()
-            # ) * .1
-
-            _x, _ = self.find_empty()
-
-            if _x is None:
-                reward += 3
-                done = True
-
-            elif self.check_unique(self.board[y].sum()):
-                reward += 1
-            
-            elif self.check_unique(self.board[:, x].sum()):
-                reward += 1
-            
-            elif self.check_unique(self.board[y // 3 * 3 : y // 3 * 3 + 3, x // 3 * 3 : x // 3 * 3 + 3].sum()):
-                reward += 1
-        
+        # Encourage ai to explore
+        if self.board[y, x] == 0:
+            reward += 1
         else:
-            reward -= 2
-            self.put(x, y, n)
+            reward -= 1
+
+        self.put(x, y, n)
+
+        _x, _ = self.find_empty()
+
+        if _x is None:
+            reward += 3
+            done = True
+
+        self.row_progress = self.calculate_progress(self.board[y])
+        self.col_progress = self.calculate_progress(self.board[:, x])
+        self.box_progress = self.calculate_progress(self.board[y // 3 * 3 : y // 3 * 3 + 3, x // 3 * 3 : x // 3 * 3 + 3])
+        self.avg_progress = (self.row_progress + self.col_progress + self.box_progress) / 3
+
+
+        self.board[y, x] = 0
+
+        if self.is_valid(x, y, n):
+            reward += self.avg_progress * 5
+        else:
+            reward -= (1 - self.avg_progress) * 5
+
+        self.board[y, x] = n
         
+        if self.log_data:
+            self.data["row_progress"].append(self.row_progress)
+            self.data["col_progress"].append(self.col_progress)
+            self.data["box_progress"].append(self.box_progress)
+            self.data["avg_progress"].append(self.avg_progress)
+
+            with open("data.json", "w") as f:
+                json.dump(self.data, f, indent=4)
+
         return done, reward, self.steps
 
     def put(self, x, y, n):
@@ -236,9 +261,9 @@ class SudokuGame:
     def check_unique(self, arr):
         return np.all(np.isin(np.arange(1, 10), arr))
 
-    def calculate_similarity(self, arr):
+    def calculate_progress(self, arr: np.ndarray):
         target = np.arange(1, 10)  # Array with numbers 1 to 9
-        intersection = np.intersect1d(arr, target)
+        intersection = np.intersect1d(arr.flatten(), target)
         similarity = len(intersection) / len(target)
         return similarity
     

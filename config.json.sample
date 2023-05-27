@@ -3,5 +3,6 @@
     "num_episode": 10,
     "render": true,
     "frame_delay": 0.01,
-    "round_delay": 5
+    "round_delay": 5,
+    "log_data": true
 }
